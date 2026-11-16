@@ -1,0 +1,93 @@
+---
+title: "ovarian"
+output: html_document
+---
+
+
+```{r setup}
+      knitr::opts_knit$set(root.dir = normalizePath("/home1/vpoot/490_cluster/analysis_data")) 
+```
+
+```{r}
+library(BiocManager) 
+library(TCGAbiolinks) 
+library(maftools)
+library (knitr)
+library(sesame)
+library(sesameData)
+library(limma)
+library(ggplot2)
+```
+
+# Query, Download, and Prepare the data.
+```{r}
+query <- GDCquery(project = "TCGA-OV",
+                  data.category = "DNA Methylation",
+                  data.type = "Methylation Beta Value",
+                  platform = "Illumina Human Methylation 450",
+                  data.format = "Dataframe")
+#GDCdownload(query)      <-- you will need to run this!
+GDCdownload(query)
+methylation450 <- GDCprepare(query)
+```
+
+```{r}
+clin_query <- GDCquery(project = "TCGA-OV", 
+                       data.category = "Clinical", 
+                       data.type = "Clinical Supplement", 
+                       data.format = 'OV Biotab') 
+GDCdownload(clin_query) 
+clinical.OVtab.all <- GDCprepare(clin_query) 
+clinic <- clinical.OVtab.all$clinical_patient_ov[-c(1,2),]
+```
+
+```{r}
+colnames(clinic)[ colnames(clinic) == "bcr_patient_barcode" ] <- 
+"Tumor_Sample_Barcode" 
+
+
+maf_query <- GDCquery( 
+project = "TCGA-OV", 
+data.category = "Simple Nucleotide Variation", 
+access = "open", 
+data.type = "Masked Somatic Mutation", 
+workflow.type = "Aliquot Ensemble Somatic Variant Merging and Masking" 
+)
+
+GDCdownload(maf_query, method = "api",  files.per.chunk = 100) 
+maf <- GDCprepare(maf_query) 
+maf_object <- read.maf(maf = maf, 
+clinicalData = clinic, 
+isTCGA = TRUE)
+```
+
+```{r}
+rna_query <- GDCquery(project ="TCGA-OV",
+                      data.category = "Transcriptome Profiling",
+                      data.type = "Gene Expression Quantification", 
+                      workflow.type = "STAR - Counts")
+GDCdownload(rna_query)
+rna_se <- GDCprepare(rna_query)
+```
+
+```{r}
+dim(rna_se@colData)
+dim(rna_se@rowRanges@elementMetadata)
+dim(rna_se@assays@data$unstranded)
+```
+
+```{r}
+# colData: 
+rownames(rna_se@colData)
+colnames(rna_se@colData)
+
+# rowRanges:
+rownames(rna_se@rowRanges@elementMetadata)
+colnames(rna_se@rowRanges@elementMetadata)
+
+# what are the rows...?
+
+# unstranded: 
+rownames(rna_se@assays@data$unstranded)
+colnames(rna_se@assays@data$unstranded
+```
